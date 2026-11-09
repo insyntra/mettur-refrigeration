@@ -1,0 +1,8 @@
+.assetsignore
+wrangler.jsonc
+functions
+src
+schema.sql
+node_modules
+.git
+.gitignore
