@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Review approvals – Mettur Tech Refrigeration</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:24px 0}
+.tabs .btn{min-height:42px}.tabs .btn[aria-pressed=true]{background:var(--bd);color:#fff;border-color:var(--bd)}
+.item{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:14px}
+.item p{margin:8px 0 16px}.item small{color:var(--mut)}
+.item .row{margin-top:0}.item .btn{min-height:42px;padding:0 18px}
+.del{border-color:#C5D6E2;color:var(--mut)}
+</style>
+</head>
+<body>
+<main><section><div class="w" style="max-width:760px">
+  <h1 style="font-size:36px">Review approvals</h1>
+  <form id="login" novalidate>
+    <label>Admin password<input type="password" id="pw" autocomplete="current-password"><span class="err" id="le"></span></label>
+    <button class="btn p" type="submit">Sign in</button>
+  </form>
+  <div id="app" hidden>
+    <p class="lead">Approved reviews appear on the website. Rejected ones are never shown.</p>
+    <div class="tabs" id="tabs"></div>
+    <div id="list"></div>
+    <div class="row"><button class="btn s" id="out" type="button">Sign out</button></div>
+  </div>
+</div></section></main>
+<script>
+var T = sessionStorage.getItem('t') || '', S = 'pending';
+var login = document.getElementById('login'), app = document.getElementById('app'), list = document.getElementById('list');
+function api(path, body) {
+  var o = { headers: { Authorization: 'Bearer ' + T, 'content-type': 'application/json' } };
+  if (body) { o.method = 'POST'; o.body = JSON.stringify(body); }
+  return fetch(path, o);
+}
+function show(on) { login.hidden = on; app.hidden = !on; }
+function tabs(pending) {
+  var t = document.getElementById('tabs'); t.innerHTML = '';
+  [['pending', 'Pending' + (pending ? ' (' + pending + ')' : '')], ['approved', 'Approved'], ['rejected', 'Rejected']].forEach(function (x) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'btn s'; b.textContent = x[1];
+    b.setAttribute('aria-pressed', S === x[0]); b.onclick = function () { S = x[0]; load(); }; t.appendChild(b);
+  });
+}
+function btn(label, cls, fn) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = label; b.onclick = fn; return b; }
+function act(id, action) {
+  if (action === 'delete' && !confirm('Delete this review permanently?')) return;
+  api('/api/admin/moderate', { id: id, action: action }).then(load);
+}
+function load() {
+  api('/api/admin/moderate?status=' + S).then(function (r) {
+    if (r.status === 401) { sessionStorage.removeItem('t'); T = ''; show(false); document.getElementById('le').textContent = 'Wrong password.'; return null; }
+    return r.json();
+  }).then(function (d) {
+    if (!d) return;
+    show(true); tabs(d.pending); list.innerHTML = '';
+    if (!d.reviews.length) { var e = document.createElement('div'); e.className = 'empty'; e.textContent = 'No ' + S + ' reviews.'; list.appendChild(e); return; }
+    d.reviews.forEach(function (v) {
+      var c = document.createElement('div'); c.className = 'item';
+      var h = document.createElement('b'); h.textContent = v.name + '  |  ' + v.rating + ' / 5';
+      var p = document.createElement('p'); p.textContent = v.comment;
+      var m = document.createElement('small'); m.textContent = v.created_at + ' UTC';
+      var r = document.createElement('div'); r.className = 'row';
+      if (v.status !== 'approved') r.appendChild(btn('Approve', 'p', function () { act(v.id, 'approve'); }));
+      if (v.status !== 'rejected') r.appendChild(btn('Reject', 's', function () { act(v.id, 'reject'); }));
+      r.appendChild(btn('Delete', 's del', function () { act(v.id, 'delete'); }));
+      c.appendChild(h); c.appendChild(p); c.appendChild(m); c.appendChild(r); list.appendChild(c);
+    });
+  });
+}
+login.addEventListener('submit', function (e) { e.preventDefault(); T = document.getElementById('pw').value; sessionStorage.setItem('t', T); document.getElementById('le').textContent = ''; load(); });
+document.getElementById('out').onclick = function () { sessionStorage.removeItem('t'); T = ''; show(false); };
+if (T) load();
+</script>
+</body>
+</html>

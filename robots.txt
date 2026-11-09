@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /about-us/
+Disallow: /contact-us/
+Disallow: /gallery/
+Disallow: /reviews/
+Disallow: /service-areas/
+Disallow: /services/
+
+Sitemap: https://metturtechrefrigeration.in/sitemap.xml
